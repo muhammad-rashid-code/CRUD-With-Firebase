@@ -7,10 +7,11 @@ import {
   setDoc,
   deleteDoc,
   onSnapshot,
+  serverTimestamp,
 } from "firebase/firestore";
 import { useEffect, useState } from "react";
 
-type TodoType = { todo: string; todoID: string };
+type TodoType = { todo: string; todoID: string; createdAt: any };
 
 export default function Home() {
   const [todo, setTodo] = useState<string>("");
@@ -25,7 +26,15 @@ export default function Home() {
         ...doc.data(),
         todoID: doc.id,
       })) as TodoType[];
-      setTodos(todosData);
+
+      // Sort todos by createdAt timestamp (FIFO: oldest first)
+      const sortedTodos = todosData.sort((a, b) => {
+        const aTime = a.createdAt?.seconds || 0; // Firebase timestamp seconds
+        const bTime = b.createdAt?.seconds || 0; // Firebase timestamp seconds
+        return aTime - bTime; // Ascending order
+      });
+
+      setTodos(sortedTodos);
     });
 
     return () => unsubscribe(); // Cleanup subscription on unmount
@@ -47,7 +56,7 @@ export default function Home() {
       const collectionRef = collection(db, "todos");
       const todoID = doc(collectionRef).id;
       const docRef = doc(collectionRef, todoID);
-      await setDoc(docRef, { todo, todoID });
+      await setDoc(docRef, { todo, todoID, createdAt: serverTimestamp() }); // Add timestamp
       setTodo("");
     } catch (e) {
       console.error(e);
@@ -74,7 +83,11 @@ export default function Home() {
 
     try {
       const docRef = doc(db, "todos", editTodoID as string);
-      await setDoc(docRef, { todo, todoID: editTodoID });
+      await setDoc(docRef, {
+        todo,
+        todoID: editTodoID,
+        createdAt: serverTimestamp(),
+      }); // Update timestamp
       setTodo("");
       setEditTodoID(null); // Clear the editing state
     } catch (e) {
@@ -156,7 +169,12 @@ export default function Home() {
               key={todo.todoID}
               className="flex justify-between items-center p-2 bg-white border-b border-gray-200"
             >
-              <span>{todo.todo}</span>
+              <div>
+                <span>{todo.todo}</span>
+                <span className="text-gray-500 text-xs block">
+                  {todo.createdAt?.toDate().toLocaleString() || "Loading..."}
+                </span>
+              </div>
               <div>
                 <button
                   onClick={() => editTodo(todo.todoID, todo.todo)}
