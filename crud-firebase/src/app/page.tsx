@@ -137,32 +137,35 @@ export default function Home() {
         {editTodoID ? "Update" : "Create"}
       </button>
 
-      {/* Enhanced Error Message */}
-      {error && (
-        <div className="flex items-center mt-2 text-red-500 bg-red-100 border border-red-400 rounded p-2 transition duration-300 ease-in-out">
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            className="h-5 w-5 mr-2"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M12 8v4m0 4h.01M12 4a8 8 0 100 16 8 8 0 000-16z"
-            />
-          </svg>
-          <span>{error}</span>
-        </div>
-      )}
-
-      {/* Scrollable Todo List Container */}
+      {/* Fixed Error Message Space */}
       <div
-        className="w-full max-w-md mt-4 overflow-y-auto border border-gray-300 rounded"
-        style={{ maxHeight: "300px" }}
+        className={`flex items-center mt-2 ${
+          error ? "h-12" : "h-0"
+        } overflow-hidden transition-all duration-300 ease-in-out`}
       >
+        {error && (
+          <div className="flex items-center text-red-500 bg-red-100 border border-red-400 rounded p-2 transition duration-300 ease-in-out w-full">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              className="h-5 w-5 mr-2"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M12 8v4m0 4h.01M12 4a8 8 0 100 16 8 8 0 000-16z"
+              />
+            </svg>
+            <span>{error}</span>
+          </div>
+        )}
+      </div>
+
+      {/* Fixed Height Todo List Container */}
+      <div className="w-full max-w-md mt-4 min-w-[300px] h-[300px] overflow-y-auto border border-gray-300 rounded">
         <ul>
           {todos.map((todo) => (
             <li
