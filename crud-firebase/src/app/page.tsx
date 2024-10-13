@@ -8,38 +8,43 @@ import {
   deleteDoc,
   onSnapshot,
   serverTimestamp,
+  Timestamp,
 } from "firebase/firestore";
 import { useEffect, useState } from "react";
 
-type TodoType = { todo: string; todoID: string; createdAt: any };
+// Define the TodoType with proper typing for the timestamp
+type TodoType = { todo: string; todoID: string; createdAt: Timestamp };
 
 export default function Home() {
-  const [todo, setTodo] = useState<string>("");
-  const [todos, setTodos] = useState<TodoType[]>([]);
-  const [error, setError] = useState<string>("");
-  const [editTodoID, setEditTodoID] = useState<string | null>(null);
+  const [todo, setTodo] = useState<string>(""); // State for the current todo input
+  const [todos, setTodos] = useState<TodoType[]>([]); // State to hold all todos
+  const [error, setError] = useState<string>(""); // Error message state
+  const [editTodoID, setEditTodoID] = useState<string | null>(null); // State for the ID of the todo being edited
 
+  // Fetch todos from Firestore and update the state
   useEffect(() => {
     const collectionRef = collection(db, "todos");
+
     const unsubscribe = onSnapshot(collectionRef, (snapshot) => {
       const todosData = snapshot.docs.map((doc) => ({
         ...doc.data(),
         todoID: doc.id,
       })) as TodoType[];
 
-      // Sort todos by createdAt timestamp (FIFO: oldest first)
+      // Sort todos by creation timestamp in ascending order (FIFO)
       const sortedTodos = todosData.sort((a, b) => {
-        const aTime = a.createdAt?.seconds || 0; // Firebase timestamp seconds
-        const bTime = b.createdAt?.seconds || 0; // Firebase timestamp seconds
-        return aTime - bTime; // Ascending order
+        const aTime = a.createdAt?.seconds || 0;
+        const bTime = b.createdAt?.seconds || 0;
+        return aTime - bTime;
       });
 
-      setTodos(sortedTodos);
+      setTodos(sortedTodos); // Update todos state
     });
 
-    return () => unsubscribe(); // Cleanup subscription on unmount
+    return () => unsubscribe(); // Cleanup Firestore subscription
   }, []);
 
+  // Function to create a new todo
   const createTodo = async () => {
     if (!todo.trim()) {
       setError("Please enter a todo.");
@@ -50,25 +55,33 @@ export default function Home() {
       return;
     }
 
-    setError(""); // Clear error if input is valid
+    setError(""); // Clear any existing error messages
 
     try {
       const collectionRef = collection(db, "todos");
-      const todoID = doc(collectionRef).id;
+      const todoID = doc(collectionRef).id; // Generate a unique ID for the todo
       const docRef = doc(collectionRef, todoID);
-      await setDoc(docRef, { todo, todoID, createdAt: serverTimestamp() }); // Add timestamp
-      setTodo("");
+
+      await setDoc(docRef, {
+        todo,
+        todoID,
+        createdAt: serverTimestamp(), // Store the current server timestamp
+      });
+
+      setTodo(""); // Clear the input field
     } catch (e) {
       console.error(e);
       setError("Failed to create todo. Please try again.");
     }
   };
 
-  const editTodo = async (id: string, currentTodo: string) => {
-    setTodo(currentTodo); // Set current todo text in input for editing
+  // Function to handle editing an existing todo
+  const editTodo = (id: string, currentTodo: string) => {
+    setTodo(currentTodo); // Set the current todo text in the input field for editing
     setEditTodoID(id); // Store the ID of the todo being edited
   };
 
+  // Function to update an existing todo
   const updateTodo = async () => {
     if (!todo.trim()) {
       setError("Please enter a todo.");
@@ -79,23 +92,25 @@ export default function Home() {
       return;
     }
 
-    setError(""); // Clear error if input is valid
+    setError(""); // Clear any existing error messages
 
     try {
       const docRef = doc(db, "todos", editTodoID as string);
       await setDoc(docRef, {
         todo,
         todoID: editTodoID,
-        createdAt: serverTimestamp(),
-      }); // Update timestamp
-      setTodo("");
-      setEditTodoID(null); // Clear the editing state
+        createdAt: serverTimestamp(), // Update the timestamp
+      });
+
+      setTodo(""); // Clear the input field
+      setEditTodoID(null); // Exit editing mode
     } catch (e) {
       console.error(e);
       setError("Failed to update todo. Please try again.");
     }
   };
 
+  // Function to delete a todo
   const deleteTodo = async (id: string) => {
     try {
       const docRef = doc(db, "todos", id);
@@ -109,8 +124,10 @@ export default function Home() {
   return (
     <div className="flex flex-col items-center justify-center min-h-screen p-4 bg-gray-100">
       <label htmlFor="todo" className="mb-2 text-lg font-medium">
-        What's Todo
+        What&apos;s Todo
       </label>
+
+      {/* Input field for entering todos */}
       <input
         type="text"
         id="todo"
@@ -130,6 +147,8 @@ export default function Home() {
           error ? "border-red-500" : "border-gray-300"
         } rounded focus:outline-none focus:ring-2 focus:ring-blue-500`}
       />
+
+      {/* Button to create or update a todo */}
       <button
         onClick={editTodoID ? updateTodo : createTodo}
         className="w-full max-w-md px-4 py-2 text-white bg-blue-500 rounded hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-300"
@@ -137,35 +156,15 @@ export default function Home() {
         {editTodoID ? "Update" : "Create"}
       </button>
 
-      {/* Fixed Error Message Space */}
-      <div
-        className={`flex items-center mt-2 ${
-          error ? "h-12" : "h-0"
-        } overflow-hidden transition-all duration-300 ease-in-out`}
-      >
-        {error && (
-          <div className="flex items-center text-red-500 bg-red-100 border border-red-400 rounded p-2 transition duration-300 ease-in-out w-full">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              className="h-5 w-5 mr-2"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M12 8v4m0 4h.01M12 4a8 8 0 100 16 8 8 0 000-16z"
-              />
-            </svg>
-            <span>{error}</span>
-          </div>
-        )}
-      </div>
+      {/* Error message display */}
+      {error && (
+        <div className="mt-2 w-full max-w-md p-2 bg-red-100 border border-red-400 rounded text-red-500">
+          {error}
+        </div>
+      )}
 
-      {/* Fixed Height Todo List Container */}
-      <div className="w-full max-w-md mt-4 min-w-[300px] h-[300px] overflow-y-auto border border-gray-300 rounded">
+      {/* Display the list of todos */}
+      <div className="w-full max-w-md mt-4 h-[300px] overflow-y-auto border border-gray-300 rounded">
         <ul>
           {todos.map((todo) => (
             <li
